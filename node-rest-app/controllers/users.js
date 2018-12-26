@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const _ = require("lodash");
 
 exports.user_create = function (req, res, next){
-    var user = {
+    let user = {
             username: req.body.username,
             password: req.body.password
         };

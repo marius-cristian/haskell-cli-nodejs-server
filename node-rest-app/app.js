@@ -4,8 +4,8 @@ const movies = require('./routes/customers') ;
 const users = require('./routes/users');
 const bodyParser = require('body-parser');
 const mongoose = require('./config/database');
-var jwt = require('jsonwebtoken');
-var Promise = require("bluebird");
+const jwt = require('jsonwebtoken');
+const Promise = require("bluebird");
 const app = express();
 app.set('secretKey', 'this_should_be_generated_in_an_env_var'); // jwt secret token
 // connection to mongodb
@@ -22,7 +22,7 @@ app.use('/users', users);
 app.use('/customers', validate_user, movies);
 
 function validate_user(req, res, next) {
-  var jwtVerifyAsync = Promise.promisify(jwt.verify, jwt);
+  const jwtVerifyAsync = Promise.promisify(jwt.verify, jwt);
   jwtVerifyAsync.verify(req.headers['x-access-token'], req.app.get('secretKey'))
      .then(function(decoded){
       // add user id to request

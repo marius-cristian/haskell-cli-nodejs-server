@@ -3,7 +3,7 @@ const Schema = mongoose.Schema;
 const bcrypt = require('bcrypt');
 const saltRounds = 5;
 
-var UserSchema = new Schema({
+let UserSchema = new Schema({
     username  : {type: String, required: true, max: 100, unique: true},
     password  : {type: String, required: true}
 });
