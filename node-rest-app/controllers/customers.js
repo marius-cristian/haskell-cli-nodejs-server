@@ -1,12 +1,13 @@
 const Customers = require('../models/customers');
 const _ = require("lodash");
 
+function trim_customer(c){
+  return {name: c.name, email: c.email, phone: c.phone};
+}
 
 exports.get_all=function(req,res,next){
   Customers.find({}).then(function(customers){
-    let all_customers = _.map(customers, (c)=>{
-      return {name: c.name, email: c.email, phone: c.phone};
-    });
+    let all_customers = _.map(customers, trim_customer);
     res.json({status:200, message:"Ok.", data:all_customers});
   })
   .catch(function(err){
@@ -15,11 +16,6 @@ exports.get_all=function(req,res,next){
 };
 
 exports.insert_customer=function(req, res, next) {
-    let customer = new User({
-            name: req.body.name,
-            email: req.body.email,
-            phone: req.body.phone
-        });
     Customers.create({name: req.body.name,
                       email: req.body.email,
                       phone: req.body.phone})
@@ -38,9 +34,7 @@ exports.insert_customer=function(req, res, next) {
 exports.find_customer=function(req, res, next){
 Customers.find({name: {"$regex": req.params.str, "$options":"i"}})
          .then(function(customers){
-            let all_customers = _.map(customers, (c)=>{
-              return {name: c.name, email: c.email, phone: c.phone};
-            });
+            let all_customers = _.map(customers, trim_customer);
             res.json({status:200, message:"Ok.", data:all_customers});
          })
          .catch(function(err){
