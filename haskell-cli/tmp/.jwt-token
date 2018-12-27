@@ -1,0 +1,1 @@
+{"status":200,"message":"Authenticated.","data":{"user":{"_id":"5c2562573392ec10193543a1","username":"mac"},"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjVjMjU2MjU3MzM5MmVjMTAxOTM1NDNhMSIsImlhdCI6MTU0NTk1Mzg4NywiZXhwIjoxNTQ1OTU3NDg3fQ.WsNiNt1TeqGTWlKWThxrXM1cGZHmduZn4oqPD3ajGN0"}}
