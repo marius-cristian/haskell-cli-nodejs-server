@@ -53,15 +53,6 @@ instance FromJSON UserLogin
 instance FromJSON UserData
 instance FromJSON User
 
---instance FromJSON UserLogin where
---    parseJSON = withObject "UserLogin" $ \v -> UserLogin
---        <$> v .: "status"
---        <*> v .: "message"
---        <*> v .: "data"
---instance FromJSON UserData where
---    parseJSON = withObject "UserData" $ \v -> UserData
---        <$> v .: "user"
---        <*> v .: "token"
 instance FromJSON Customer
 
 register :: String
@@ -97,10 +88,6 @@ requestCustomer name email phone = object
                 , "phone" .= (phone :: String)
                 ]
 
--- this is VERY BAD
--- i havent managed to solve the type of the output
--- to be m Request
--- thus I cut corner and dumped IO()
 -- input: manager, url, token or empty string, body object
 buildPOSTRequest :: (MonadThrow m) => String -> String -> Value -> m Request
 buildPOSTRequest url tkn obj =
@@ -134,7 +121,7 @@ buildGETRequest url tkn =
 loopOver :: Manager -> IO()
 loopOver manager = do
   hSetBuffering stdin LineBuffering
-  input <- Prelude.words <$> getLine --fmap (Prelude.map read.(Prelude.words)) getLine
+  input <- Prelude.words <$> getLine
   putStrLn $ show input
   case input of
     ["cust", "register", username, password] -> do
