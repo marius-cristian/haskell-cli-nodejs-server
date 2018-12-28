@@ -1,0 +1,34 @@
+start mongodb
+mongod -dbpath ./mongoFiles/
+
+start server
+node ./node-rest-api/api.js
+
+start client
+./haskel-cli/cli.hs
+
+
+miscaleneaous:
+npm --version 4.2.0
+
+mongod --version
+db version v3.2.17
+git version: 186656d79574f7dfe0831a7e7821292ab380f667
+OpenSSL version: OpenSSL 1.0.2n  7 Dec 2017
+allocator: tcmalloc
+modules: none
+build environment:
+    distmod: ubuntu1604
+    distarch: x86_64
+    target_arch: x86_64
+
+
+stack --version
+Version 1.7.1, Git revision 681c800873816c022739ca7ed14755e85a579565 (5807 commits) x86_64 hpack-0.28.2
+
+
+The communication is not encrypted via TLS.
+
+The client is written in haskell.
+
+The server is in node js, might re-write it in haskell if it weights in the process of getting hired
