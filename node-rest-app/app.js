@@ -22,20 +22,9 @@ app.use('/users', users);
 //private route
 app.use('/customers', validate_user, movies);
 function validate_user(req, res, next) {
-  // promise version that does not work
-  //const jwtVerifyAsync = Promise.promisify(jwt.verify, {context:jwt});
-  //jwtVerifyAsync.verify(req.headers['x-access-token'], req.app.get('secretKey'))
-  //   .then(function(decoded){
-  //    // add user id to request
-  //    req.body.userId = decoded.id;
-  //    next();
-  //  })
-  //  .catch(function(err){
-  //    res.json({status:409, message: err.message, data:null});
-  //  });
    jwt.verify(req.headers['x-access-token'], req.app.get('secretKey'), function(err, decoded) {
     if (err) {
-      res.json({status:"error", message: err.message, data:null});
+      res.json({status:"error", message: err.message, datafield:null});
     }else{
       // add user id to request
       req.body.userId = decoded.id;
@@ -54,10 +43,10 @@ app.use(function(err, req, res, next) {
   console.log(err);
   switch(err.status){
     case 404:
-      res.status(404).json({status:404, message: "Not found", data:null});
+      res.status(404).json({status:404, message: "Not found", datafield:null});
       break;
     default:
-      res.status(500).json({status:500, message: "Broken", data:null});
+      res.status(500).json({status:500, message: "Broken", datafield:null});
   } 
 });
 app.listen(3000, function(){

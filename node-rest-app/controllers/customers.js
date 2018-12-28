@@ -8,7 +8,7 @@ function trim_customer(c){
 exports.get_all=function(req,res,next){
   Customers.find({}).then(function(customers){
     let all_customers = _.map(customers, trim_customer);
-    res.json({status:200, message:"Ok.", data:all_customers});
+    res.json({status:200, message:"Ok.", datafield:all_customers});
   })
   .catch(function(err){
     next(err);
@@ -23,7 +23,7 @@ exports.insert_customer=function(req, res, next) {
                 res.json({
                   status: 200,
                   message: "Customer added.",
-                  data: null
+                  datafield: null
                 });
               })
               .catch(function(err){
@@ -35,7 +35,7 @@ exports.find_customer=function(req, res, next){
 Customers.find({name: {"$regex": req.params.str, "$options":"i"}})
          .then(function(customers){
             let all_customers = _.map(customers, trim_customer);
-            res.json({status:200, message:"Ok.", data:all_customers});
+            res.json({status:200, message:"Ok.", datafield:all_customers});
          })
          .catch(function(err){
           next(err);
