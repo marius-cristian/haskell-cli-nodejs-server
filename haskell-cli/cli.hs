@@ -149,8 +149,7 @@ loopOver manager = do
       res <- getResponse req manager
       L8.putStrLn $ res
       let tok = decodeToken res
-      putStrLn tok
-      L8.writeFile tokenPath res
+      Prelude.writeFile tokenPath tok
       loopOver manager
     ["cust", "new", name, email, phone] -> do
       let customer = requestCustomer name email phone
