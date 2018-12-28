@@ -23,14 +23,14 @@ import System.IO
 import Data.String ( fromString )
 import Control.Monad (forM, liftM)
 import Control.Monad.Catch
-import Data.Aeson (Value, FromJSON, encode, object, (.=))
+import Data.Aeson (Value, FromJSON, encode, decode, object, (.=))
 import Data.Text
 
 -- data for Json Types
 data UserLogin = UserLogin {
   status    :: Int
 , message   :: Text
-, datafield :: Maybe UserData
+, dataf :: Maybe UserData
 } deriving (Show, Generic)
 --
 data UserData = UserData {
@@ -39,20 +39,20 @@ data UserData = UserData {
 } deriving (Show, Generic)
 --
 data User = User {
-  id        :: Text
+  _id        :: Text
 , username  :: Text
 } deriving (Show, Generic)
 
-data Customer = Customer {
-  name  :: Text
-, email :: Text
-, phone :: Text
-} deriving (Show, Generic)
+--data Customer = Customer {
+--  name  :: Text
+--, email :: Text
+--, phone :: Text
+--} deriving (Show, Generic)
 
 instance FromJSON UserLogin
 instance FromJSON UserData
 instance FromJSON User
-instance FromJSON Customer
+--instance FromJSON Customer
 
 register :: String
 register = "http://localhost:3000/users/register"
@@ -119,11 +119,6 @@ buildGETRequest url tkn =
         [("x-access-token", C8.pack tkn)]
       }
     return fullReq
---    
---    response <- httpLbs fullReq manager
---    putStrLn $ "The status code was: "
---          ++ show (statusCode $ responseStatus response)
---    L8.putStrLn $ responseBody response
 
 -- CLI loop
 loopOver :: Manager -> IO()
@@ -143,24 +138,26 @@ loopOver manager = do
       req <- buildPOSTRequest login emptyToken usr
       res <- getResponse req manager
       L8.putStrLn $ res
+      let tok = decodeToken res
+      putStrLn tok
       L8.writeFile tokenPath res
       loopOver manager
     ["cust", "new", name, email, phone] -> do
       let customer = requestCustomer name email phone
-      let tkn = readToken tokenPath
+      tkn <- readToken tokenPath
       req <- buildPOSTRequest customers tkn customer
       res <- getResponse req manager
       L8.putStrLn $ res
       loopOver manager
     -- this other 2 should be in 
     ["cust", "list"] -> do
-      let tkn = readToken tokenPath
+      tkn <- readToken tokenPath
       req <- buildGETRequest customers tkn
       res <- getResponse req manager
       L8.putStrLn $ res      
       loopOver manager
     ["cust", "search", str] -> do
-      let tkn = readToken tokenPath
+      tkn <- readToken tokenPath
       let cSearch = customerSearch str
       req <- buildGETRequest cSearch tkn
       res <- getResponse req manager
@@ -179,8 +176,20 @@ loopOver manager = do
 -- TODO READ TOKEN FROM FILE
 -- APPEND IT FOR USER REQUESTS
 
-readToken :: FilePath -> String
-readToken = undefined
+
+decodeToken :: BS.ByteString -> String
+decodeToken bs = case decode bs of
+  Nothing -> "INVALID_LOGIN_1"
+  Just (UserLogin status message dataf) -> show dataf
+
+decodeData :: Maybe UserData -> String
+decodeData m = case m of
+  Just (UserData user token) -> token
+  Nothing -> "INVALID_LOGIN_2"
+
+
+readToken :: FilePath -> IO String
+readToken tknPath = Prelude.readFile tknPath
 
 -- here must parse strings in 1 string, not separate
 showUsage :: IO()
@@ -188,12 +197,12 @@ showUsage =
   do
     putStrLn "\n\n"
     putStrLn "Commands:"
-    putStrLn "\"cust\" \"register\" \"<username>\" \"<password>\""
-    putStrLn "\"cust\" \"login\" \"<username>\" \"<password>\""
-    putStrLn "\"cust\" \"new\" \"<name>\" \"<email>\" \"<phone>\""
-    putStrLn "\"cust\" \"list\""
-    putStrLn "\"cust\" \"search\" \"<string>\""
-    putStrLn "\"quit\""
+    putStrLn "cust register <username> <password>"
+    putStrLn "cust login <username> <password>"
+    putStrLn "cust new <name> <email> <phone>"
+    putStrLn "cust list"
+    putStrLn "cust search <string>"
+    putStrLn "quit"
     putStrLn "\n\n"
 
 
