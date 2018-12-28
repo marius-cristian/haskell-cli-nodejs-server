@@ -30,7 +30,7 @@ import Data.Text
 data UserLogin = UserLogin {
   status    :: Int
 , message   :: Text
-, dataf :: Maybe UserData
+, datafield :: Maybe UserData
 } deriving (Show, Generic)
 --
 data UserData = UserData {
@@ -43,16 +43,26 @@ data User = User {
 , username  :: Text
 } deriving (Show, Generic)
 
---data Customer = Customer {
---  name  :: Text
---, email :: Text
---, phone :: Text
---} deriving (Show, Generic)
+data Customer = Customer {
+  name  :: Text
+, email :: Text
+, phone :: Text
+} deriving (Show, Generic)
 
 instance FromJSON UserLogin
 instance FromJSON UserData
 instance FromJSON User
---instance FromJSON Customer
+
+--instance FromJSON UserLogin where
+--    parseJSON = withObject "UserLogin" $ \v -> UserLogin
+--        <$> v .: "status"
+--        <*> v .: "message"
+--        <*> v .: "data"
+--instance FromJSON UserData where
+--    parseJSON = withObject "UserData" $ \v -> UserData
+--        <$> v .: "user"
+--        <*> v .: "token"
+instance FromJSON Customer
 
 register :: String
 register = "http://localhost:3000/users/register"
@@ -152,6 +162,7 @@ loopOver manager = do
     -- this other 2 should be in 
     ["cust", "list"] -> do
       tkn <- readToken tokenPath
+      putStrLn tkn
       req <- buildGETRequest customers tkn
       res <- getResponse req manager
       L8.putStrLn $ res      
@@ -179,13 +190,13 @@ loopOver manager = do
 
 decodeToken :: BS.ByteString -> String
 decodeToken bs = case decode bs of
-  Nothing -> "INVALID_LOGIN_1"
-  Just (UserLogin status message dataf) -> show dataf
+  Just (UserLogin status msg df) -> decodeData df
+  Nothing -> "invalid datafield"
 
 decodeData :: Maybe UserData -> String
 decodeData m = case m of
   Just (UserData user token) -> token
-  Nothing -> "INVALID_LOGIN_2"
+  Nothing -> "invalid token"
 
 
 readToken :: FilePath -> IO String
@@ -203,6 +214,7 @@ showUsage =
     putStrLn "cust list"
     putStrLn "cust search <string>"
     putStrLn "quit"
+    putStrLn "help"
     putStrLn "\n\n"
 
 
@@ -211,4 +223,4 @@ main = do
   showUsage
   manager <- newManager tlsManagerSettings
   loopOver manager
-  putStrLn $ "Ok Bye."
+  putStrLn $ "Bye."
