@@ -65,7 +65,7 @@ customers :: String
 customers = "http://localhost:3000/customers"
 
 customerSearch :: String -> String
-customerSearch src = "http://localhost:3000/customers/" ++ src 
+customerSearch src = "http://localhost:3000/customers/" ++ src
 
 tokenPath :: FilePath
 tokenPath = "./tmp/.jwt-token"
@@ -145,13 +145,15 @@ loopOver manager = do
       res <- getResponse req manager
       L8.putStrLn $ res
       loopOver manager
-    -- this other 2 should be in 
+    -- MIKKEL: handling of request contains alot of redundant code
+    --- The same putstrn of result, readtoken etc.
+    -- Can you find a way to shorten it, perhaps using functions ?
     ["cust", "list"] -> do
       tkn <- readToken tokenPath
       putStrLn tkn
       req <- buildGETRequest customers tkn
       res <- getResponse req manager
-      L8.putStrLn $ res      
+      L8.putStrLn $ res
       loopOver manager
     ["cust", "search", str] -> do
       tkn <- readToken tokenPath
