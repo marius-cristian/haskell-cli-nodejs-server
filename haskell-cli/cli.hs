@@ -56,7 +56,9 @@ instance FromJSON User
 instance FromJSON Customer
 
 register :: String
-register = "http://localhost:3000/users/register"
+--  Mikkel perhaps the path to the localhost should be a constant ?
+--- if path changes we need to change it many times.
+handleSignedRequestsregister = "http://localhost:3000/users/register"
 
 login :: String
 login = "http://localhost:3000/users/authenticate"
@@ -134,6 +136,8 @@ handleRequests manager url token v = do
   res <- handleResponse req manager
   return res
 
+-- MIKKEL ok nice with the handleSignedRequests .. this is actually something like this
+-- I was looking for
 handleSignedRequests :: Manager -> String -> Maybe Value -> IO BS.ByteString
 handleSignedRequests manager url v = do
   tkn <- readToken tokenPath
@@ -172,6 +176,8 @@ loopOver manager = do
     ["cust", "search", str] -> do
       let cSearch = customerSearch str
       handleSignedRequests manager cSearch Nothing
+      -- MIKKEL perhaps the handleSignedRequests
+      -- could call loopOver as well ?
       loopOver manager
     ["quit"] -> do putStrLn "Ok Bye!"
     ["help"] -> do
