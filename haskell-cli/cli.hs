@@ -88,7 +88,7 @@ requestCustomer name email phone = object
                 , "phone" .= (phone :: String)
                 ]
 
--- input: manager, url, token or empty string, body object
+-- input: url, token or empty string, body object
 buildPOSTRequest :: (MonadThrow m) => String -> String -> Value -> m Request
 buildPOSTRequest url tkn obj =
   do
@@ -117,6 +117,36 @@ buildGETRequest url tkn =
       }
     return fullReq
 
+-- treating the response
+handleResponse :: Request -> Manager -> IO BS.ByteString
+handleResponse req manager= do
+  res <- getResponse req manager
+  L8.putStrLn $ res
+  return res
+
+-- token signed and unsigned requests
+-- alternatively could sign everything
+handleRequests :: Manager -> String -> String -> Maybe Value -> IO BS.ByteString
+handleRequests manager url token v = do
+  req <- case v of
+          Just val -> buildPOSTRequest url token val
+          Nothing -> buildGETRequest url token
+  res <- handleResponse req manager
+  return res
+
+handleSignedRequests :: Manager -> String -> Maybe Value -> IO BS.ByteString
+handleSignedRequests manager url v = do
+  tkn <- readToken tokenPath
+  res <- handleRequests manager url tkn v
+  return res
+
+-- encapsulated user interactions
+handleUser :: Manager -> String -> String -> String -> IO BS.ByteString
+handleUser manager url name pwd = do
+  let usr = requestUser name pwd
+  res <- handleRequests manager url emptyToken (Just usr)
+  return res
+
 -- CLI loop
 loopOver :: Manager -> IO()
 loopOver manager = do
@@ -125,55 +155,31 @@ loopOver manager = do
   putStrLn $ show input
   case input of
     ["cust", "register", username, password] -> do
-      let usr = requestUser username password
-      req <- buildPOSTRequest register emptyToken usr
-      res <- getResponse req manager
-      L8.putStrLn $ res
+      handleUser manager register username password
       loopOver manager
     ["cust", "login", username, password] -> do
-      let usr = requestUser username password
-      req <- buildPOSTRequest login emptyToken usr
-      res <- getResponse req manager
-      L8.putStrLn $ res
+      res <- handleUser manager login username password
       let tok = decodeToken res
       Prelude.writeFile tokenPath tok
       loopOver manager
     ["cust", "new", name, email, phone] -> do
       let customer = requestCustomer name email phone
-      tkn <- readToken tokenPath
-      req <- buildPOSTRequest customers tkn customer
-      res <- getResponse req manager
-      L8.putStrLn $ res
+      handleSignedRequests manager customers (Just customer)
       loopOver manager
-    -- MIKKEL: handling of request contains alot of redundant code
-    --- The same putstrn of result, readtoken etc.
-    -- Can you find a way to shorten it, perhaps using functions ?
     ["cust", "list"] -> do
-      tkn <- readToken tokenPath
-      putStrLn tkn
-      req <- buildGETRequest customers tkn
-      res <- getResponse req manager
-      L8.putStrLn $ res
+      handleSignedRequests manager customers Nothing
       loopOver manager
     ["cust", "search", str] -> do
-      tkn <- readToken tokenPath
       let cSearch = customerSearch str
-      req <- buildGETRequest cSearch tkn
-      res <- getResponse req manager
-      L8.putStrLn $ res
+      handleSignedRequests manager cSearch Nothing
       loopOver manager
     ["quit"] -> do putStrLn "Ok Bye!"
     ["help"] -> do
       showUsage
       loopOver manager
-
     _ -> do
       putStrLn $ "Invalid command"
       loopOver manager
-
-
--- TODO READ TOKEN FROM FILE
--- APPEND IT FOR USER REQUESTS
 
 
 decodeToken :: BS.ByteString -> String
@@ -187,28 +193,28 @@ decodeData m = case m of
   Nothing -> "invalid token"
 
 
+-- here i do not check if file exists
+-- it's bad as it can crash the program
 readToken :: FilePath -> IO String
 readToken tknPath = Prelude.readFile tknPath
 
--- here must parse strings in 1 string, not separate
+-- alternative: can be read from a README file
 showUsage :: IO()
 showUsage =
   do
-    putStrLn "\n\n"
-    putStrLn "Commands:"
-    putStrLn "cust register <username> <password>"
-    putStrLn "cust login <username> <password>"
-    putStrLn "cust new <name> <email> <phone>"
-    putStrLn "cust list"
-    putStrLn "cust search <string>"
-    putStrLn "quit"
-    putStrLn "help"
-    putStrLn "\n\n"
-
+    putStrLn "\n\n\
+      \Commands:\n\
+      \cust register <username> <password>\n\
+      \cust login <username> <password>\n\
+      \cust new <name> <email> <phone>\n\
+      \cust list\n\
+      \cust search <string>\n\
+      \quit\n\
+      \help\n\
+      \\n\n"
 
 main :: IO ()
 main = do
   showUsage
   manager <- newManager tlsManagerSettings
   loopOver manager
-  putStrLn $ "Bye."
