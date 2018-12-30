@@ -30,9 +30,9 @@ exports.insert_customer=function(req, res, next) {
                   datafield: null
                 });
               })
-              .catch(function(err){
-                next(err);
-              });
+              //.catch(function(err){
+              //  next(err);
+              //});
 };
 
 exports.find_customer=function(req, res, next){
@@ -41,7 +41,7 @@ Customers.find(req.params.str)
             let all_customers = _.map(customers, trim_customer);
             res.json({status:200, message:"Ok.", datafield:all_customers});
          })
-         .catch(function(err){
-          next(err);
-         });
+         //.catch(function(err){
+         // next(err);
+         //});
 };

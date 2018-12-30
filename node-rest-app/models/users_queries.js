@@ -3,7 +3,7 @@ const Users = require('./users');
 exports.create = async function (uname, pwd){
   let user = {username: uname, password: pwd};
   try {return await Users.create(user);}
-  catch(err){console.log(err);}
+  catch(err){throw err;}
 }
 
 exports.findOne = async function (uname){

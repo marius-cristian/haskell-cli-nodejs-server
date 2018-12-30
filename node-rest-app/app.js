@@ -36,6 +36,15 @@ app.use(function(req, res, next) {
     err.status = 404;
     next(err);
 });
+
+// promise errors by default:
+// this will timeout the client.
+// aka no clue how to use the express router
+// to handle such reqests
+process.on("unhandledRejection", function(reason,p){
+  console.log(reason, p);
+});
+
 //handle errors
 app.use(function(err, req, res, next) {
   console.log(err);
