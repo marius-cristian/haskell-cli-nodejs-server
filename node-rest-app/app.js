@@ -6,8 +6,6 @@ const bodyParser = require('body-parser');
 const mongoose = require('./config/database');
 const jwt = require('jsonwebtoken');
 const app = express();
-const Promise = require("bluebird");
-//bluebird seems to not work. used if
 app.set('secretKey', 'this_should_be_generated_in_an_env_var'); // jwt secret token
 //connection to mongodb
 mongoose.connection.on('error', console.error.bind(console, 'MongoDB connection error:'));

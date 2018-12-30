@@ -1,14 +1,10 @@
-const Users = require('../models/users');
+const Users = require('../models/users_queries');
 const bcrypt = require('bcrypt'); 
 const jwt = require('jsonwebtoken');
 const _ = require("lodash");
 
 exports.user_create = function (req, res, next){
-    let user = {
-            username: req.body.username,
-            password: req.body.password
-        };
-    Users.create(user)
+    Users.create(req.body.username,req.body.password)
         .then(function(ok){
             res.json({status:201, message:"User created.", datafield: null});
         })
@@ -18,7 +14,7 @@ exports.user_create = function (req, res, next){
 };
 
 exports.user_authenticate = function (req, res, next){
-    Users.findOne({username:req.body.username})
+    Users.findOne(req.body.username)
         .then(function(userInfo){
             switch(bcrypt.compareSync(req.body.password, userInfo.password)){
                 case true:{
