@@ -1,5 +1,5 @@
 const Customers = require('./customers');
-//MIkkel well done !
+
 exports.create = async function(_name,_email,_phone){
   try{return await Customers.create({name:_name,email:_email,phone:_phone});}
   catch(err){throw err};
