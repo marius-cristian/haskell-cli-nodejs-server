@@ -1,3 +1,6 @@
+//MIKKEL any reason for the solver function ? I see you use
+//it for postprocessing the result..this could be made this could be made shorter
+ 
 exports.generic_handler = (req,res,next,promise,solver)=>{
   promise.then(function(result){
     let df = null
