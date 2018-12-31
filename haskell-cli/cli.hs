@@ -7,8 +7,7 @@
    --package filepath
    --package aeson
 -}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings, DeriveGeneric, ScopedTypeVariables #-}
 
 import GHC.Generics
 import qualified Data.ByteString.Lazy as BS
@@ -21,10 +20,11 @@ import Network.HTTP.Types.Status  (statusCode)
 import System.FilePath
 import System.IO
 import Data.String ( fromString )
-import Control.Monad (forM, liftM)
+import Control.Monad (forM, liftM, unless, void)
 import Control.Monad.Catch
 import Data.Aeson (Value, FromJSON, encode, decode, object, (.=))
-import Data.Text
+import Data.Text hiding (words, writeFile, readFile, unlines)
+import Data.Maybe
 
 -- data for Json Types
 data UserLogin = UserLogin {
@@ -55,17 +55,21 @@ instance FromJSON User
 
 instance FromJSON Customer
 
+-- constructor for apiEndpoint
+apiEndpoint :: String -> String
+apiEndpoint = ("http://localhost:3000/" ++)
+
 register :: String
-register = "http://localhost:3000/users/register"
+register = apiEndpoint "users/register"
 
 login :: String
-login = "http://localhost:3000/users/authenticate"
+login = apiEndpoint "users/authenticate"
 
 customers :: String
-customers = "http://localhost:3000/customers"
+customers = apiEndpoint "customers"
 
 customerSearch :: String -> String
-customerSearch src = "http://localhost:3000/customers/" ++ src
+customerSearch src =  apiEndpoint ("customers/" ++ src)
 
 tokenPath :: FilePath
 tokenPath = "./tmp/.jwt-token"
@@ -76,19 +80,19 @@ emptyToken = "whatever"
 -- build user request
 requestUser :: String -> String -> Value
 requestUser uname pwd = object
-            [ "username" .= (uname :: String)
-            , "password" .= (pwd :: String)
+            [ "username" .= uname
+            , "password" .= pwd
             ]
 
 -- customer request object
 requestCustomer :: String -> String -> String -> Value
 requestCustomer name email phone = object
-                [ "name"  .= (name :: String)
-                , "email" .= (email :: String)
-                , "phone" .= (phone :: String)
+                [ "name"  .= name
+                , "email" .= email
+                , "phone" .= phone
                 ]
 
--- input: manager, url, token or empty string, body object
+-- input: url, token or empty string, body object
 buildPOSTRequest :: (MonadThrow m) => String -> String -> Value -> m Request
 buildPOSTRequest url tkn obj =
   do
@@ -117,96 +121,100 @@ buildGETRequest url tkn =
       }
     return fullReq
 
--- CLI loop
-loopOver :: Manager -> IO()
+-- treating the response
+handleResponse :: Request -> Manager -> IO BS.ByteString
+handleResponse req manager= 
+  do 
+    res <- getResponse req manager
+    L8.putStrLn res
+    return res
+
+-- token signed and unsigned requests
+-- alternatively could sign everything
+handleRequests :: Manager -> String -> String -> Maybe Value -> IO BS.ByteString
+handleRequests manager url token v = do
+  req <- case v of
+          Just val -> buildPOSTRequest url token val
+          Nothing  -> buildGETRequest url token
+  handleResponse req manager
+
+-- MIKKEL ok nice with the handleSignedRequests .. this is actually something like this
+-- I was looking for
+handleSignedRequests :: Manager -> String -> Maybe Value -> IO BS.ByteString
+handleSignedRequests manager url v = do
+  tkn <- readToken tokenPath
+  handleRequests manager url tkn v
+
+handleSignedRequests_ :: Manager -> String -> Maybe Value -> IO ()
+handleSignedRequests_ manager url = void . handleSignedRequests manager url
+
+-- encapsulated user interactions
+handleUser :: Manager -> String -> String -> String -> IO BS.ByteString
+handleUser manager url name pwd = do
+  let usr = requestUser name pwd
+  handleRequests manager url emptyToken (Just usr)
+
+handleUser_ :: Manager -> String -> String -> String -> IO ()
+handleUser_ manager url name = void . handleUser manager url name
+
+
+loopOver :: Manager -> IO ()
 loopOver manager = do
   hSetBuffering stdin LineBuffering
-  input <- Prelude.words <$> getLine
+  input <- words <$> getLine
   putStrLn $ show input
   case input of
-    ["cust", "register", username, password] -> do
-      let usr = requestUser username password
-      req <- buildPOSTRequest register emptyToken usr
-      res <- getResponse req manager
-      L8.putStrLn $ res
-      loopOver manager
+    ["cust", "register", username, password] ->
+      handleUser_ manager register username password
     ["cust", "login", username, password] -> do
-      let usr = requestUser username password
-      req <- buildPOSTRequest login emptyToken usr
-      res <- getResponse req manager
-      L8.putStrLn $ res
+      res <- handleUser manager login username password
       let tok = decodeToken res
-      Prelude.writeFile tokenPath tok
-      loopOver manager
+      writeFile tokenPath tok
     ["cust", "new", name, email, phone] -> do
       let customer = requestCustomer name email phone
-      tkn <- readToken tokenPath
-      req <- buildPOSTRequest customers tkn customer
-      res <- getResponse req manager
-      L8.putStrLn $ res
-      loopOver manager
-    -- MIKKEL: handling of request contains alot of redundant code
-    --- The same putstrn of result, readtoken etc.
-    -- Can you find a way to shorten it, perhaps using functions ?
-    ["cust", "list"] -> do
-      tkn <- readToken tokenPath
-      putStrLn tkn
-      req <- buildGETRequest customers tkn
-      res <- getResponse req manager
-      L8.putStrLn $ res
-      loopOver manager
-    ["cust", "search", str] -> do
-      tkn <- readToken tokenPath
-      let cSearch = customerSearch str
-      req <- buildGETRequest cSearch tkn
-      res <- getResponse req manager
-      L8.putStrLn $ res
-      loopOver manager
-    ["quit"] -> do putStrLn "Ok Bye!"
-    ["help"] -> do
-      showUsage
-      loopOver manager
-      putStrLn $ "Invalid command"
-      loopOver manager
-
-
--- TODO READ TOKEN FROM FILE
--- APPEND IT FOR USER REQUESTS
+      handleSignedRequests_ manager customers (Just customer)
+    ["cust", "list"] ->  
+      handleSignedRequests_ manager customers Nothing
+    ["cust", "search", str] -> 
+      handleSignedRequests_ manager (customerSearch str) Nothing
+    ["quit"] -> putStrLn "Ok Bye!"
+    ["help"] -> showUsage
+    _ -> putStrLn "Invalid command"
+  -- much better than a new method see control.monad
+  unless (input == ["quit"]) $ loopOver manager
 
 
 decodeToken :: BS.ByteString -> String
 decodeToken bs = case decode bs of
-  Just (UserLogin status msg df) -> decodeData df
-  Nothing -> "invalid datafield"
+  Just login -> decodeData $ datafield login
+  Nothing    -> "invalid datafield"
 
 decodeData :: Maybe UserData -> String
 decodeData m = case m of
-  Just (UserData user token) -> token
-  Nothing -> "invalid token"
+  Just userData -> token userData
+  Nothing       -> "invalid token"
 
-
+-- fixed with check
 readToken :: FilePath -> IO String
-readToken tknPath = Prelude.readFile tknPath
+readToken path = handle (\(e :: SomeException) -> return "Error reading Token") $ readFile path
 
--- here must parse strings in 1 string, not separate
-showUsage :: IO()
+-- alternative: can be read from a README file
+showUsage :: IO ()
 showUsage =
   do
-    putStrLn "\n\n"
-    putStrLn "Commands:"
-    putStrLn "cust register <username> <password>"
-    putStrLn "cust login <username> <password>"
-    putStrLn "cust new <name> <email> <phone>"
-    putStrLn "cust list"
-    putStrLn "cust search <string>"
-    putStrLn "quit"
-    putStrLn "help"
-    putStrLn "\n\n"
-
+    putStrLn . unlines $ 
+      [ "Commands:"
+      , "cust register <username> <password>"
+      , "cust login <username> <password>"
+      , "cust new <name> <email> <phone>"
+      , "cust list"
+      , "cust search <string>"
+      , "quit"
+      , "help"
+      ]
 
 main :: IO ()
 main = do
   showUsage
   manager <- newManager tlsManagerSettings
   loopOver manager
-  putStrLn $ "Bye."
